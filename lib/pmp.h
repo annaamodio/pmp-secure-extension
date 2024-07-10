@@ -28,6 +28,7 @@ typedef enum
  * @struct pmp_config_t
  * @brief this struct contains the configuration for a PMP region
  * @param region_number the number
+ * @param SL security lock 
  * @param R read permission
  * @param W write permission
  * @param X execute permission
@@ -39,6 +40,7 @@ typedef enum
  * */
 typedef struct  {
     unsigned int region_number;
+    unsigned int SL : 1;
     unsigned int R : 1;
     unsigned int W : 1;
     unsigned int X : 1;
@@ -60,6 +62,7 @@ typedef struct  {
 #define PMP_CFG_TOR 0x08
 #define PMP_CFG_NA4 0x10
 #define PMP_CFG_NAPOT 0x18
+#define PMP_CFG_SL 0x40
 
 /**
  * bits in mseccfg

@@ -52,6 +52,7 @@ void pmp_cfg_to_csr(pmp_config_t * config, uint32_t* word){
     if(config->R==1) val|=PMP_CFG_R;
     if(config->W==1) val|=PMP_CFG_W;
     if(config->X==1) val|=PMP_CFG_X;
+    if(config->SL==1) val|=PMP_CFG_SL;
 
     switch (config->A){
         case OFF:
@@ -253,6 +254,7 @@ pmp_config_t pmp_read_region (uint8_t region){
     cfg.L=(word & PMP_CFG_L == PMP_CFG_L)? 1:0;
     cfg.R=(word & PMP_CFG_R == PMP_CFG_R)? 1:0;
     cfg.W=(word & PMP_CFG_W == PMP_CFG_W)? 1:0;
+    cfg.SL=(word & PMP_CFG_SL == PMP_CFG_SL)? 1:0;
     
     uint32_t address;
     switch((word & 0x18)){
