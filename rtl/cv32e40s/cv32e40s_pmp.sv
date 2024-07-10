@@ -27,6 +27,8 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
+// CHANGES:
+// secure control (if security level is S and privilege level is M all rules are ignored: 223-225)
 
 module cv32e40s_pmp import cv32e40s_pkg::*;
   #(
@@ -46,6 +48,10 @@ module cv32e40s_pmp import cv32e40s_pkg::*;
 
    // Privilege mode
    input              privlvl_t priv_lvl_i,
+
+   // Security mode
+   input            security_lvl_t security_lvl_i,
+
    // Access checking
    input logic [33:0] pmp_req_addr_i,
    input logic        pmp_req_debug_region_i,
@@ -64,6 +70,7 @@ module cv32e40s_pmp import cv32e40s_pkg::*;
   logic [PMP_NUM_REGIONS-1:0]                       region_mml_perm_check;
   logic [PMP_NUM_REGIONS-1:0]                       access_fault_all;
   logic                                             access_fault;
+  logic                                             access_fault_security;             
 
   generate
     for (genvar r_a = 0; r_a < PMP_NUM_REGIONS; r_a++) begin : addr_match
@@ -213,9 +220,13 @@ module cv32e40s_pmp import cv32e40s_pkg::*;
     end
   end
 
+  // check security permission. If security level is S and privilege is M all rules are ignored
+  //(if security extension is not enabled, security_lvl_i will be tied to 0)
+  assign access_fault_security = ((security_lvl_i == SEC_LVL_S) && (priv_lvl_i == PRIV_LVL_M)) ? 1'b0 : access_fault;
+
   // PMP is always present (even if PMP_NUM_REGIONS == 0)
   // Do not block access if it is accessing the Debug Module region in debug mode
-  assign pmp_req_err_o = pmp_req_debug_region_i ? 1'b0 : access_fault;
+  assign pmp_req_err_o = pmp_req_debug_region_i ? 1'b0 : access_fault_security;
 
   // RLB, rule locking bypass, is only relevant to cv32e40s_cs_registers which controls writes to the
   // PMP CSRs. Tie to unused signal here to prevent lint warnings.

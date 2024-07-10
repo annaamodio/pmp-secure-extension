@@ -249,6 +249,11 @@ module cv32e40s_core import cv32e40s_pkg::*;
 
   privlvl_t     priv_lvl;
 
+  security_lvl_t security_lvl_lsu;
+  security_lvl_t security_lvl_if_ctrl;
+  
+  security_lvl_t security_lvl;
+
   logic         csr_mnxti_read;
   csr_hz_t      csr_hz;
 
@@ -585,6 +590,7 @@ module cv32e40s_core import cv32e40s_pkg::*;
 
     // Privilege level
     .priv_lvl_ctrl_i     ( priv_lvl_if_ctrl         ),
+    .security_lvl_ctrl_i ( security_lvl_if_ctrl     ),
 
     // Dummy Instruction control
     .xsecure_ctrl_i      ( xsecure_ctrl             ),
@@ -796,6 +802,7 @@ module cv32e40s_core import cv32e40s_pkg::*;
 
     // Privilege level
     .priv_lvl_lsu_i        ( priv_lvl_lsu       ),
+    .security_lvl_lsu_i    ( security_lvl_lsu   ),
 
     // Valid/ready
     .valid_0_i             ( lsu_valid_ex       ), // First LSU stage (EX)
@@ -929,6 +936,11 @@ module cv32e40s_core import cv32e40s_pkg::*;
     .priv_lvl_if_ctrl_o         ( priv_lvl_if_ctrl       ),
     .priv_lvl_lsu_o             ( priv_lvl_lsu           ),
     .priv_lvl_o                 ( priv_lvl               ),
+
+    //MODIFICATO
+    .security_lvl_if_ctrl_o     ( security_lvl_if_ctrl   ),
+    .security_lvl_lsu_o         ( security_lvl_lsu       ),
+    .security_lvl_o             ( security_lvl           ),
 
     .sys_en_id_i                ( sys_en_id              ),
     .sys_mret_id_i              ( sys_mret_insn_id       ),

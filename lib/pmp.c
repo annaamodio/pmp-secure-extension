@@ -242,6 +242,8 @@ uint32_t read_pmpaddr_csr_value(uint8_t region){
     case 15:
         __asm__("csrr %[addr], pmpaddr15" : [addr] "=r"(address)::);
         break;
+    default:
+        break;
     }
     return address;
 }

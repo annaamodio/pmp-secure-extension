@@ -86,6 +86,11 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
   output privlvlctrl_t                  priv_lvl_if_ctrl_o,
   output privlvl_t                      priv_lvl_lsu_o,
 
+  //MODIFIED
+  output security_lvl_t                 security_lvl_o,
+  output security_lvl_t                 security_lvl_if_ctrl_o, //cpire se una struttur CTRL è necessaria
+  output security_lvl_t                 security_lvl_lsu_o,
+
   // IF/ID pipeline
   input logic                           sys_en_id_i,
   input logic                           sys_mret_id_i,
@@ -283,6 +288,7 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
   pmpncfg_t                     pmpncfg_rdata[PMP_MAX_REGIONS];
   logic [PMP_MAX_REGIONS-1:0]   pmpncfg_we;
   logic [PMP_MAX_REGIONS-1:0]   pmpncfg_locked;
+  logic [PMP_MAX_REGIONS-1:0]   pmpncfg_s_locked;
   logic [PMP_MAX_REGIONS-1:0]   pmpaddr_locked;
   logic [PMP_MAX_REGIONS-1:0]   pmpncfg_wr_addr_match;
   logic [PMP_MAX_REGIONS-1:0]   pmpncfg_warl_ignore_wr;
@@ -322,6 +328,10 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
   privlvl_t                     priv_lvl_n, priv_lvl_q, priv_lvl_rdata;
   logic                         priv_lvl_we;
   logic [1:0]                   priv_lvl_q_int;
+
+  security_lvl_t                security_lvl_n, security_lvl_q, security_lvl_rdata; //MODIFIED
+  logic                         security_lvl_we;
+  logic [1:0]                   security_lvl_q_int;
 
   logic [31:0]                  mstateen0_n, mstateen0_q, mstateen0_rdata;
   logic                         mstateen0_we;
@@ -392,6 +402,7 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
   logic                         mintthresh_rd_error;
   logic                         jvt_rd_error;
   logic                         priv_lvl_rd_error;
+  logic                         security_lvl_rd_error; //MODIFIED
   logic                         mstateen0_rd_error;
   logic                         mcause_rd_error;
 
@@ -449,6 +460,7 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
     mintthresh_rd_error ||
     jvt_rd_error ||
     priv_lvl_rd_error ||
+    security_lvl_rd_error || //MODIFIED
     mstateen0_rd_error ||
     mcause_rd_error;
 
@@ -1054,6 +1066,9 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
 
     priv_lvl_n    = priv_lvl_rdata;
     priv_lvl_we   = 1'b0;
+
+    security_lvl_n = security_lvl_rdata;
+    securitu_lvl_we = 1'b0;
 
     if (CLIC) begin
       mtvec_n       = csr_next_value(mtvec_t'{
@@ -2296,6 +2311,49 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
     assign priv_lvl_lsu_o = PRIV_LVL_M;
   end
 
+  //MODIFIED
+  if(SECURE_PMP) begin : secure_security_lvl
+  // Security levl register
+  cv32e40s_csr
+  #(
+    .LIB        (LIB), //see????
+    .WIDTH      ($bits(security_lvl_t)),
+    .MASK       (CSR_PRV_LVL_MASK),
+    .SHADOWCOPY (SECURE),
+    .RESETVALUE (SEC_LVL_NS)
+  )
+  security_lvl_i
+  (
+    .clk            ( clk                   ),
+    .rst_n          ( rst_n                 ),
+    .scan_cg_en_i   ( scan_cg_en_i          ),
+    .wr_data_i      ( security_lvl_n            ),
+    .wr_en_i        ( security_lvl_we           ),
+    .rd_data_o      ( security_lvl_q_int        ),
+    .rd_error_o     ( security_lvl_rd_error     )
+  );
+   assign security_lvl_q = security_lvl_t'(security_lvl_q_int);
+
+  //Security level for IF stage
+  always_comb begin
+    // set security level for if stage. Prediction ????
+  end
+
+  //for LSU
+  always_comb begin
+      //set. prediction???
+  end
+
+  end else begin : no_security
+    assign security_lvl_q = SEC_LVL_NS;
+    assign security_lvl_rd_error = 1'b0;
+
+  //che significa questa struttura??????
+    assign priv_lvl_if_ctrl_o.priv_lvl     = SEC_LVL_NS;
+    assign priv_lvl_if_ctrl_o.priv_lvl_set = 1'b0;
+
+    assign security_lvl_lsu_o   = SEC_LVL_NS;
+  end
 
   generate
     if (PMP_NUM_REGIONS > 0) begin: csr_pmp
@@ -2317,7 +2375,8 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
                                               ({pmpncfg_n_int[i].lock, pmpncfg_n_int[i].read, pmpncfg_n_int[i].write, pmpncfg_n_int[i].exec} == 4'b1101));  // Locked region, M-mode: read/execute, S/U mode: none
 
           // MSECCFG.RLB allows the lock bit to be bypassed
-          assign pmpncfg_locked[i] = pmpncfg_rdata[i].lock && !pmp_mseccfg_rdata.rlb;
+          // modified; also locked if slock=1 and security level is non secure: CAPIRE QUI DA DOVE ARRIVA IL SECURITY LEVEL (&& level = non secure)
+          assign pmpncfg_locked[i] = pmpncfg_rdata[i].lock && !pmp_mseccfg_rdata.rlb && (pmpncfg_rdata[i].slock && );
 
           // Extract PMPCFGi bits from wdata
           always_comb begin
@@ -2338,6 +2397,10 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
                 pmpncfg_n[i].exec  = pmpncfg_q[i].exec;
               end
 
+              // is security extension is not enabled slock can't be set.
+              if (!SECURE_PMP) begin
+                pmpncfg_n[i].slock = '0;
+              end
               // NA4 mode is not selectable when G > 0, previous mode will be kept
               unique case (csr_wdata_int[(i%4)*PMPNCFG_W+3+:2])
                 PMP_MODE_OFF   : pmpncfg_n[i].mode = PMP_MODE_OFF;

@@ -62,6 +62,9 @@ module cv32e40s_mpu import cv32e40s_pkg::*;
    // PMP CSR's
    input        pmp_csr_t csr_pmp_i,
 
+  // Current security level. Should be in request type?? MODIFIED
+   input        security_lvl_t security_lvl,
+
    // Indication from the core that there will be one pending transaction in the next cycle
    input logic  core_one_txn_pend_n,
 
@@ -235,6 +238,7 @@ module cv32e40s_mpu import cv32e40s_pkg::*;
          .pmp_req_type_i                    (pmp_req_type           ),
          .csr_pmp_i                         (csr_pmp_i              ),
          .priv_lvl_i                        (pmp_priv_lvl           ),
+         .security_lvl_i                    (security_lvl           ),
          .pmp_req_addr_i                    (pmp_req_addr           ),
          .pmp_req_debug_region_i            (core_trans_debug_region));
     end
