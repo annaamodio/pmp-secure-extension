@@ -288,7 +288,6 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
   pmpncfg_t                     pmpncfg_rdata[PMP_MAX_REGIONS];
   logic [PMP_MAX_REGIONS-1:0]   pmpncfg_we;
   logic [PMP_MAX_REGIONS-1:0]   pmpncfg_locked;
-  logic [PMP_MAX_REGIONS-1:0]   pmpncfg_s_locked;
   logic [PMP_MAX_REGIONS-1:0]   pmpaddr_locked;
   logic [PMP_MAX_REGIONS-1:0]   pmpncfg_wr_addr_match;
   logic [PMP_MAX_REGIONS-1:0]   pmpncfg_warl_ignore_wr;
@@ -331,7 +330,7 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
 
   security_lvl_t                security_lvl_n, security_lvl_q, security_lvl_rdata; //MODIFIED
   logic                         security_lvl_we;
-  logic [1:0]                   security_lvl_q_int;
+  logic                         security_lvl_q_int;
 
   logic [31:0]                  mstateen0_n, mstateen0_q, mstateen0_rdata;
   logic                         mstateen0_we;
@@ -427,6 +426,11 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
       assign mnxti_irq_id = mnxti_irq_id_i;
     end
   endgenerate
+
+
+  //VEDERE
+   assign security_lvl_if_ctrl_o = SEC_LVL_NS;
+   assign security_lvl_lsu_o = SEC_LVL_NS;
 
   // Local instr_valid for write portion (WB)
   // Not factoring in ctrl_fsm_i.halt_limited_wb. This signal is only set during SLEEP mode, and while in SLEEP
@@ -1068,7 +1072,7 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
     priv_lvl_we   = 1'b0;
 
     security_lvl_n = security_lvl_rdata;
-    securitu_lvl_we = 1'b0;
+    security_lvl_we = 1'b0;
 
     if (CLIC) begin
       mtvec_n       = csr_next_value(mtvec_t'{
@@ -2312,7 +2316,7 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
   end
 
   //MODIFIED
-  if(SECURE_PMP) begin : secure_security_lvl
+  if(SECURE_MONITOR) begin : secure_security_lvl
   // Security levl register
   cv32e40s_csr
   #(
@@ -2333,24 +2337,26 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
     .rd_error_o     ( security_lvl_rd_error     )
   );
    assign security_lvl_q = security_lvl_t'(security_lvl_q_int);
-
-  //Security level for IF stage
+  //TO CHANGE
+  
+  /* //Security level for IF stage
   always_comb begin
-    // set security level for if stage. Prediction ????
+    security_lvl_if_ctrl_o = SEC_LVL_NS; //TO CHANGE
   end
 
   //for LSU
   always_comb begin
       //set. prediction???
-  end
+    security_lvl_lsu_o = SEC_LVL_NS;
+  end */
+
 
   end else begin : no_security
     assign security_lvl_q = SEC_LVL_NS;
     assign security_lvl_rd_error = 1'b0;
 
   //che significa questa struttura??????
-    assign priv_lvl_if_ctrl_o.priv_lvl     = SEC_LVL_NS;
-    assign priv_lvl_if_ctrl_o.priv_lvl_set = 1'b0;
+    assign security_lvl_if_ctrl_o   = SEC_LVL_NS;
 
     assign security_lvl_lsu_o   = SEC_LVL_NS;
   end
@@ -2376,7 +2382,7 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
 
           // MSECCFG.RLB allows the lock bit to be bypassed
           // modified; also locked if slock=1 and security level is non secure: CAPIRE QUI DA DOVE ARRIVA IL SECURITY LEVEL (&& level = non secure)
-          assign pmpncfg_locked[i] = pmpncfg_rdata[i].lock && !pmp_mseccfg_rdata.rlb && (pmpncfg_rdata[i].slock && );
+          assign pmpncfg_locked[i] = ((pmpncfg_rdata[i].slock & security_lvl_rdata ==SEC_LVL_NS) | pmpncfg_rdata[i].lock) && !pmp_mseccfg_rdata.rlb;// && security_lvl_q == SEC_LVL_NS);
 
           // Extract PMPCFGi bits from wdata
           always_comb begin
@@ -2398,7 +2404,7 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
               end
 
               // is security extension is not enabled slock can't be set.
-              if (!SECURE_PMP) begin
+              if (!SECURE_MONITOR) begin
                 pmpncfg_n[i].slock = '0;
               end
               // NA4 mode is not selectable when G > 0, previous mode will be kept
@@ -2648,6 +2654,8 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
   assign mie_rdata          = mie_q;
 
   assign priv_lvl_rdata     = priv_lvl_q;
+  assign security_lvl_rdata = security_lvl_q;
+
 
   assign pmpncfg_rdata      = pmpncfg_q;
   assign pmp_mseccfg_rdata  = pmp_mseccfg_q;
@@ -2751,6 +2759,7 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
   assign mtvt_addr_o   = mtvt_rdata.addr[31:(32-MTVT_ADDR_WIDTH)];
 
   assign priv_lvl_o    = priv_lvl_rdata;
+  assign security_lvl_o = security_lvl_rdata;
   assign mstateen0_o   = mstateen0_rdata;
 
   ////////////////////////////////////////////////////////////////////////

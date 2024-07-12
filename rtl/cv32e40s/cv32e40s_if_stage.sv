@@ -102,6 +102,7 @@ module cv32e40s_if_stage import cv32e40s_pkg::*;
 
   // Privilege mode
   input privlvlctrl_t   priv_lvl_ctrl_i,
+  input security_lvl_t security_lvl_ctrl_i,
 
   // Dummy Instruction Control
   input xsecure_ctrl_t  xsecure_ctrl_i,
@@ -302,7 +303,7 @@ module cv32e40s_if_stage import cv32e40s_pkg::*;
                                                            //  misaligned from I/O fault)
     .modified_access_i    ( 1'b0                        ), // Prefetcher will never issue a modified request
     .csr_pmp_i            ( csr_pmp_i                   ),
-
+    .security_lvl_i       ( security_lvl_ctrl_i         ),
     .core_one_txn_pend_n  ( prefetch_one_txn_pend_n     ),
     .core_mpu_err_wait_i  ( 1'b1                        ),
     .core_mpu_err_o       (                             ), // Unconnected on purpose

@@ -547,9 +547,9 @@ typedef enum logic[1:0] {
 } privlvl_t;
 
 // Security mode
-typedef enum logic{
-  SEC_LVL_S = 1'b1,
-  SEC_LVL_NS = 1'b0
+typedef enum logic {
+  SEC_LVL_NS = 1'b0,
+  SEC_LVL_S = 1'b1
 } security_lvl_t;
 
 
@@ -836,7 +836,7 @@ parameter SECURE = 1;
 parameter bit USER = SECURE;
 
 //Security extension
-parameter bit SECURE_PMP = 1;
+parameter bit SECURE_MONITOR = 1;
 
 // Lowest supported privilege level
 parameter privlvl_t PRIV_LVL_LOWEST = (USER) ? PRIV_LVL_U : PRIV_LVL_M;
