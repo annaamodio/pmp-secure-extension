@@ -137,7 +137,11 @@ module cv32e40s_core import cv32e40s_pkg::*;
 
   // CPU control signals
   input  logic                          fetch_enable_i,
-  output logic                          core_sleep_o
+  output logic                          core_sleep_o,
+
+  //MOCK. To be removed
+  input  logic                          security_lvl_we,
+  input  logic                          security_lvl_i
 );
 
   // No additional hardware performance counters
@@ -937,10 +941,14 @@ module cv32e40s_core import cv32e40s_pkg::*;
     .priv_lvl_lsu_o             ( priv_lvl_lsu           ),
     .priv_lvl_o                 ( priv_lvl               ),
 
-    //MODIFICATO
+    //To be kept in next version
     .security_lvl_if_ctrl_o     ( security_lvl_if_ctrl   ),
     .security_lvl_lsu_o         ( security_lvl_lsu       ),
     .security_lvl_o             ( security_lvl           ),
+
+    //MOCK. To be removed
+    .security_level_write       (security_lvl_we ),
+    .security_level_i           (security_lvl_i),  
 
     .sys_en_id_i                ( sys_en_id              ),
     .sys_mret_id_i              ( sys_mret_insn_id       ),

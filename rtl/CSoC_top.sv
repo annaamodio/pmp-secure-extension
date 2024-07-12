@@ -16,7 +16,7 @@ module CSoC_top import cv32e40s_pkg::*;
     parameter bit          CORE_DEBUG = 1,
     parameter int          CORE_DBG_NUM_TRIGGERS = 1,
     parameter int unsigned CORE_PMP_GRANULARITY = 0,
-    parameter int          CORE_PMP_NUM_REGIONS = 4,
+    parameter int          CORE_PMP_NUM_REGIONS = 16,
     parameter pmpncfg_t    CORE_PMP_PMPNCFG_RV[CORE_PMP_NUM_REGIONS-1:0] = '{default:PMPNCFG_DEFAULT},
     parameter logic [31:0] CORE_PMP_PMPADDR_RV[CORE_PMP_NUM_REGIONS-1:0] = '{default:32'h0},
     parameter mseccfg_t    CORE_PMP_MSECCFG_RV = MSECCFG_DEFAULT,
@@ -69,12 +69,19 @@ module CSoC_top import cv32e40s_pkg::*;
 */
 // Number of bus hosts and bus slaves (devices) in the SoC
 localparam int          NR_HOSTS      = (CORE_DEBUG == 1) ? 2 : 1;
-localparam int          NR_DEVICES    = (CORE_DEBUG == 1) ? 7 : 6;
+//localparam int          NR_DEVICES    = (CORE_DEBUG == 1) ? 7 : 6;
+//MOCK. To be removed (uncomment ^ and delete the following)
+localparam int          NR_DEVICES    = (CORE_DEBUG == 1) ? 8 : 7;
 
 // Memory scheme
 localparam logic [31:0] SIM_CTRL_SIZE  =  1 * 1024; //  1 KiB
 localparam logic [31:0] SIM_CTRL_START = 32'h20000;
 localparam logic [31:0] SIM_CTRL_MASK  = ~(SIM_CTRL_SIZE-1);
+
+//MOCK. To be removed  (Security control)
+localparam logic [31:0] SEC_CTRL_SIZE  =  1 * 1024; //  1 KiB
+localparam logic [31:0] SEC_CTRL_START = 32'h40000;
+localparam logic [31:0] SEC_CTRL_MASK  = ~(SEC_CTRL_SIZE-1);
 
 localparam logic [31:0] MEM_SIZE       = 512 * 1024; // 512 KiB
 localparam logic [31:0] MEM_START      = 32'h00100000;
@@ -123,7 +130,8 @@ localparam logic [31:0] core_dm_exception_addr = DEBUG_START + dm::ExceptionAddr
 */
 // typedefs for indexing arrays of bus hosts and slaves (devices)
 typedef enum int { CoreD, DbgHost } bus_host_e;
-typedef enum int { Ram, Gpio, Uart, Timer, Spi, SimCtrl, DbgDev } bus_device_e;
+typedef enum int { Ram, Gpio, Uart, Timer, Spi, SimCtrl, DbgDev, SecCtrl } bus_device_e;
+//MOCK. To be removed. Signal SecCtrl will not be necessary
 
 // Host signals
 logic        host_req      [NR_HOSTS];
@@ -162,6 +170,9 @@ assign cfg_device_addr_base[Spi]     = SPI_START;
 assign cfg_device_addr_mask[Spi]     = SPI_MASK;
 assign cfg_device_addr_base[SimCtrl] = SIM_CTRL_START;
 assign cfg_device_addr_mask[SimCtrl] = SIM_CTRL_MASK;
+//MOCK. To be removed:
+assign cfg_device_addr_base[SecCtrl] = SEC_CTRL_START;
+assign cfg_device_addr_mask[SecCtrl] = SEC_CTRL_MASK;
 
 // If CORE_DEBUG == 1, configure address and mask for the debug module
 if (CORE_DEBUG == 1) begin : g_dbg_device_cfg
@@ -176,6 +187,7 @@ assign device_err[Gpio]    = 1'b0;
 assign device_err[Uart]    = 1'b0;
 assign device_err[Spi]     = 1'b0;
 assign device_err[SimCtrl] = 1'b0;
+assign device_err[SecCtrl] = 1'b0; //MOCK. To be removed
 
 /*
   ___ _  _ _____ ___ ___ ___ _   _ ___ _____   ___ ___ ___ _  _   _   _    ___ 
@@ -475,7 +487,11 @@ cv32e40s_core #(
     // Special control signals
     .fetch_enable_i           (                       '1 ),
     .core_sleep_o             (          core_core_sleep ),
-    .wu_wfe_i                 (               core_wu_wfe)
+    .wu_wfe_i                 (               core_wu_wfe),
+
+    //MOCK. To be removed
+    .security_lvl_we          (  device_rvalid[SecCtrl]),
+    .security_lvl_i           ( device_rdata[SecCtrl])
 );
 
 /*
@@ -639,6 +655,22 @@ timer #(
       .rvalid_o ( device_rvalid[SimCtrl] ),
       .rdata_o  (  device_rdata[SimCtrl] )
     );
+
+//MOCK. To be removed
+
+  secure_control  u_secure_ctrl (
+  .clk_i (          clk_sys_i),
+  .rst_ni (          rst_sys_ni),
+
+  .req_i    (    device_req[SecCtrl] ),
+  .we_i     (     device_we[SecCtrl] ),
+  .be_i     (     device_be[SecCtrl] ),
+  .addr_i   (   device_addr[SecCtrl] ),
+  .wdata_i  (  device_wdata[SecCtrl] ),
+  .rvalid_o ( device_rvalid[SecCtrl] ),
+  .rdata_o  (  device_rdata[SecCtrl] )
+);
+
 `endif
 
 if (CORE_DEBUG == 1) begin : gen_dm_dmi

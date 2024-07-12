@@ -482,6 +482,7 @@ parameter CSR_PMPNCFG_MASK      = 8'hFF;
 parameter CSR_PMPADDR_MASK      = 32'hFFFFFFFF;
 parameter CSR_MSECCFG_MASK      = 32'h00000007;
 parameter CSR_PRV_LVL_MASK      = 32'h00000003;
+parameter CSR_SEC_LVL_MASK      = 32'h00000001;
 parameter CSR_MSTATEEN0_MASK    = 32'h00000004;
 parameter CSR_DSCRATCH0_MASK    = 32'hFFFFFFFF;
 parameter CSR_DSCRATCH1_MASK    = 32'hFFFFFFFF;

@@ -86,10 +86,14 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
   output privlvlctrl_t                  priv_lvl_if_ctrl_o,
   output privlvl_t                      priv_lvl_lsu_o,
 
-  //MODIFIED
+  //MODIFIED, to be kept
   output security_lvl_t                 security_lvl_o,
-  output security_lvl_t                 security_lvl_if_ctrl_o, //cpire se una struttur CTRL è necessaria
+  output security_lvl_t                 security_lvl_if_ctrl_o, /*per gestire smret struttura ctrl, forse come quella if, è necessaria*/
   output security_lvl_t                 security_lvl_lsu_o,
+
+  //MOCK. To be removed
+  input  logic                          security_level_write,
+  input  logic                          security_level_i,
 
   // IF/ID pipeline
   input logic                           sys_en_id_i,
@@ -427,10 +431,6 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
     end
   endgenerate
 
-
-  //VEDERE
-   assign security_lvl_if_ctrl_o = SEC_LVL_NS;
-   assign security_lvl_lsu_o = SEC_LVL_NS;
 
   // Local instr_valid for write portion (WB)
   // Not factoring in ctrl_fsm_i.halt_limited_wb. This signal is only set during SLEEP mode, and while in SLEEP
@@ -1071,8 +1071,11 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
     priv_lvl_n    = priv_lvl_rdata;
     priv_lvl_we   = 1'b0;
 
-    security_lvl_n = security_lvl_rdata;
-    security_lvl_we = 1'b0;
+    //security_lvl_n = security_lvl_rdata;
+    //security_lvl_we = 1'b0;
+    //MOCK. To be removed. Uncomment^, delete following
+    security_lvl_we = security_level_write;
+    security_lvl_n = security_lvl_t'(security_level_i);
 
     if (CLIC) begin
       mtvec_n       = csr_next_value(mtvec_t'{
@@ -2229,10 +2232,11 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
 
   // PMP CSRs affect memory access permissions. When updated, the pipeline must be flushed
   // to ensure succseeding instructions are executed with correct permissions
+  //MOCK. To be removed (delete last component of OR)
   assign pmp_csr_wr_in_wb = csr_wr_in_wb &&
                             (|pmpncfg_wr_addr_match ||
                              |pmpaddr_wr_addr_match ||
-                             (csr_waddr == CSR_MSECCFG));
+                             (csr_waddr == CSR_MSECCFG)|| security_level_write) ;
 
   // Detect when a JVT write is in WB
   assign jvt_wr_in_wb = csr_wr_in_wb && (csr_waddr == CSR_JVT);
@@ -2304,7 +2308,6 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
     end
   end
 
-
   end else begin : no_privlvl_user
     assign priv_lvl_q = PRIV_LVL_M;
     assign priv_lvl_rd_error = 1'b0;
@@ -2320,11 +2323,11 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
   // Security levl register
   cv32e40s_csr
   #(
-    .LIB        (LIB), //see????
+    .LIB        (LIB), 
     .WIDTH      ($bits(security_lvl_t)),
-    .MASK       (CSR_PRV_LVL_MASK),
+    .MASK       (CSR_SEC_LVL_MASK),
     .SHADOWCOPY (SECURE),
-    .RESETVALUE (SEC_LVL_NS)
+    .RESETVALUE (SEC_LVL_S)
   )
   security_lvl_i
   (
@@ -2336,24 +2339,30 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
     .rd_data_o      ( security_lvl_q_int        ),
     .rd_error_o     ( security_lvl_rd_error     )
   );
-   assign security_lvl_q = security_lvl_t'(security_lvl_q_int);
-  //TO CHANGE
-  
-  /* //Security level for IF stage
-  always_comb begin
-    security_lvl_if_ctrl_o = SEC_LVL_NS; //TO CHANGE
+    
+    assign security_lvl_q = security_lvl_t'(security_lvl_q_int);
+    
+ //MOCK. To be modified
+   // nota: a seconda dello stadio dove si troverà una eventuale smret si dovrebbe far propagare o meno a if e lsu
+   // il modo in cui funziona per il livello di privilegio (poco più sopra) lo chiarisce
+   //Security level for IF stage
+    assign security_lvl_if_ctrl_o = security_lvl_rdata;
+    assign security_lvl_lsu_o = security_lvl_rdata;
+
+  // fot IF stage
+ /*  always_comb begin
+    // based on where the instruction is
   end
 
   //for LSU
   always_comb begin
-      //set. prediction???
-    security_lvl_lsu_o = SEC_LVL_NS;
-  end */
+    // based on where the instruction is
+  end  */
 
 
   end else begin : no_security
     assign security_lvl_q = SEC_LVL_NS;
-    assign security_lvl_rd_error = 1'b0;
+    assign security_lvl_rd_error = 1'b1;
 
   //che significa questa struttura??????
     assign security_lvl_if_ctrl_o   = SEC_LVL_NS;
