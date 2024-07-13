@@ -1,77 +1,23 @@
 #include "pmp.h"
-#include "system.h" 
-#include <stdio.h>
-#include <math.h>
 
-int get_granularity(){
-    return (1 << (PMP_GRANULARITY + 2));
+// Other utility functions
+
+/**
+ * returns 1 if secure, 0 if non secure
+ */
+static int get_security_state(){
+    //MOCK. To be modified
+    // should read register or in some way know the security level
+    // (se vuoi eliminarlo, fallo: serve per controllare anche ad alto livello se la regola è SLOCKED e ritornare errore)
+    // viene chiamato in configure_region
+    int v = *(int*)0x40000;
+    return v;
 }
 
-void setRLB(unsigned int enable){
-    uint32_t v;
-    if(enable){
-        __asm__ volatile("csrsi mseccfg, %0"::"i"(RLB));
-        __asm__ volatile("csrr %0, mseccfg":"=r"(v));
-        if(v&RLB!=RLB){
-            printf("Couldn't set RLB. There are locked rules\n\n");
-        }
-    }else{
-        __asm__ volatile("csrci mseccfg, %0"::"i"(RLB));
-    }
-}
-
-void setMML(){
-    __asm__ volatile ("csrsi mseccfg, %0"::"i"(MML));
-}
-   
-void setMMWP(){
-     __asm__ volatile ("csrsi mseccfg, %0"::"i"(MMWP));
-}
-
-int remove_region(uint8_t region){
-
-    uint32_t L = pmp_read_region(region).L;
-    uint32_t v;
-    __asm__ volatile("csrr %0, mseccfg":"=r"(v));
-    v = v & RLB;
-    if(L && v!=RLB){
-        printf("Can't remove locked region (without RLB) %d",region);
-    }
-    
-    // if PMP_NUM_REGIONS > 0, all pmpcfg register form a collective WARL field with 0x00
-    // so in order to remove the region we need to write a different number
-    pmp_write_cfg(region, PMP_CFG_OFF | PMP_CFG_R);
-
-    printf("Correctly removed region %x\n",region);
-}
-
-void pmp_cfg_to_csr(pmp_config_t * config, uint32_t* word){
-    
-    uint32_t val = 0x00;
-    if(config->L==1) val|=PMP_CFG_L;
-    if(config->R==1) val|=PMP_CFG_R;
-    if(config->W==1) val|=PMP_CFG_W;
-    if(config->X==1) val|=PMP_CFG_X;
-    if(config->SL==1) val|=PMP_CFG_SL;
-
-    switch (config->A){
-        case OFF:
-            val|=PMP_CFG_OFF;
-            break;
-        case TOR:
-            val|=PMP_CFG_TOR;
-            break;
-        case NA4:
-            val|=PMP_CFG_NA4;
-            break;
-        case NAPOT:
-            val|=PMP_CFG_NAPOT;
-            break;
-    }
-    *word = val;
-}
-
-uint32_t read_pmpcfg(uint8_t number){
+/**
+ * Reads and returns pmpcfg(number) register 
+ */
+static uint32_t read_pmpcfg(uint8_t number){
     uint32_t val_read;
     switch (number)
     {
@@ -131,18 +77,12 @@ uint32_t read_pmpcfg(uint8_t number){
     return val_read;
 }
 
-uint8_t read_pmp_csr_value(uint8_t region){
-    uint32_t reg = (uint32_t) (region /4);
-    uint32_t val_read = read_pmpcfg(reg);
 
-    uint32_t mask = (0xFF) << ((region%4) * 8);
-    val_read = val_read & mask;
-    val_read = val_read >> ((region%4) * 8); 
-    return (uint8_t) val_read;
-}
-
-void write_pmp_csr_value(uint8_t region, uint32_t value){
-    uint32_t reg = (uint32_t) (region /4);
+/**
+ * Writes value to pmpcfg(region) register
+ */
+static void write_pmp_csr_value(uint8_t region, uint32_t value){
+   uint32_t reg = (uint32_t) (region /4);
   
     switch (reg){
         case 0:
@@ -201,9 +141,12 @@ void write_pmp_csr_value(uint8_t region, uint32_t value){
     } 
 }
 
-void pmp_write_cfg(uint8_t region, uint8_t cfg){
+/**
+ * Writes 8 bits config value to register (cfg is the control word)
+ */
+static void pmp_write_cfg(uint8_t region, uint8_t cfg){
 
-     //TODO:This should be done atomically
+    //Maybe atomically?
     //For now we assume that pmp configuration is done in a single intialization thread
     uint32_t current_value = read_pmpcfg((int)(region/4));
 
@@ -216,8 +159,53 @@ void pmp_write_cfg(uint8_t region, uint8_t cfg){
     write_pmp_csr_value (region,next_value);
 }
 
+/**
+ * derives control word from configuration struct
+ */
+static void pmp_cfg_to_csr(pmp_config_t * config, uint32_t* word){
+    
+    uint32_t val = 0x00;
+    if(config->L==1) val|=PMP_CFG_L;
+    if(config->R==1) val|=PMP_CFG_R;
+    if(config->W==1) val|=PMP_CFG_W;
+    if(config->X==1) val|=PMP_CFG_X;
+    if(config->SL==1) val|=PMP_CFG_SL;
 
-void write_pmpaddr_csr_value(uint8_t region, uint32_t address){
+    switch (config->A){
+        case OFF:
+            val|=PMP_CFG_OFF;
+            break;
+        case TOR:
+            val|=PMP_CFG_TOR;
+            break;
+        case NA4:
+            val|=PMP_CFG_NA4;
+            break;
+        case NAPOT:
+            val|=PMP_CFG_NAPOT;
+            break;
+    }
+    *word = val;
+}
+
+/**
+ * Returns pmp(region)cfg 8 bits corresponding to a region
+ */
+static uint8_t read_pmp_csr_value(uint8_t region){
+    uint32_t reg = (uint32_t) (region /4);
+    uint32_t val_read = read_pmpcfg(reg);
+
+    uint32_t mask = (0xFF) << ((region%4) * 8);
+    val_read = val_read & mask;
+    val_read = val_read >> ((region%4) * 8); 
+    return (uint8_t) val_read;
+}
+
+/**
+ * Writes to pmp address register (pmpaddr(region) = value)
+ */
+
+static void write_pmpaddr_csr_value(uint8_t region, uint32_t address){
     switch (region) {
     case 0:
         __asm__("csrw pmpaddr0, %[addr]" ::[addr] "r"(address) :);
@@ -418,6 +406,10 @@ void write_pmpaddr_csr_value(uint8_t region, uint32_t address){
     }
 
 }
+
+/**
+ * reads and returns pmpaddr(region) csr value
+ */
 
 uint32_t read_pmpaddr_csr_value(uint8_t region){
     uint32_t address;
@@ -624,105 +616,110 @@ uint32_t read_pmpaddr_csr_value(uint8_t region){
     return address;
 }
 
-pmp_config_t pmp_read_region (uint8_t region){
-    pmp_config_t cfg;
 
-    uint8_t word = read_pmp_csr_value(region);
-    cfg.X=(word & PMP_CFG_X == PMP_CFG_X)? 1:0;
-    cfg.L=(word & PMP_CFG_L == PMP_CFG_L)? 1:0;
-    cfg.R=(word & PMP_CFG_R == PMP_CFG_R)? 1:0;
-    cfg.W=(word & PMP_CFG_W == PMP_CFG_W)? 1:0;
-    cfg.SL=(word & PMP_CFG_SL == PMP_CFG_SL)? 1:0;
-    
-    uint32_t address;
-    switch((word & 0x18)){
-        case PMP_CFG_OFF:
-            cfg.A = OFF;
-            cfg.region_start_address=0;
-            cfg.region_end_address=0;
-            break;
-        case PMP_CFG_NA4:
-            cfg.A = NA4;
-            address=read_pmpaddr_csr_value(region);
-            address = address<<2;
-            cfg.region_start_address = address;
-            cfg.region_end_address=address+4;
-            break;
-        case PMP_CFG_NAPOT:
-            cfg.A = NAPOT;
-            cfg.region_start_address=read_pmpaddr_csr_value(region);
-            break;
-        case PMP_CFG_TOR:
-            cfg.A = TOR;
-            uint32_t start_address;
-            start_address = read_pmpaddr_csr_value(region-1);
-            start_address = start_address<<2;
-            address = read_pmpaddr_csr_value(region);
-            address = address<<2;
-            cfg.region_start_address = start_address;
-            cfg.region_end_address=address;
-            break;
-        default:
-            break;
+//API implementation
+
+int get_granularity(){
+    return (1 << (PMP_GRANULARITY + 2));
+}
+
+int setRLB(unsigned int enable){
+    uint32_t v;
+    if(enable){
+        __asm__ volatile("csrsi mseccfg, %0"::"i"(RLB));
+        __asm__ volatile("csrr %0, mseccfg":"=r"(v));
+        if(v&RLB!=RLB){
+            //Couldn't set RLB. there are locked rules
+            return 1;
+        }
+    }else{
+        __asm__ volatile("csrci mseccfg, %0"::"i"(RLB));
+    }
+    return 0;
+}
+
+void setMML(){
+    __asm__ volatile ("csrsi mseccfg, %0"::"i"(MML));
+}
+   
+void setMMWP(){
+     __asm__ volatile ("csrsi mseccfg, %0"::"i"(MMWP));
+}
+
+int remove_region(uint8_t region){
+
+    //TODO: INCLUDE SL CHECK
+    pmp_config_t cfg;
+    pmp_read_region(region,&cfg);
+    uint32_t L = cfg.L;
+    uint32_t v;
+    __asm__ volatile("csrr %0, mseccfg":"=r"(v));
+    v = v & RLB;
+    if(L && v!=RLB){
+        //Can't remove locked region (without RLB) %d
+        return PMP_LOCKED;
     }
     
-    return cfg;
+    // if PMP_NUM_REGIONS > 0, all pmpcfg register form a collective WARL field with 0x00
+    // so in order to remove the region we need to write a different number
+    pmp_write_cfg(region, PMP_CFG_OFF | PMP_CFG_R);
+
+    return PMP_OK;
 }
 
 int pmp_configure_region(pmp_config_t* config){
-
-    if(PMP_REGIONS == 0){
-        printf("PMP is not used. 0 regions\n\n");
-        return -1;
-    }
 
     unsigned int reg_num = config->region_number;
     unsigned int region_dimension = (config->A==TOR)? (config->region_end_address)-(config->region_start_address):config->region_dimension;
 
     //perform all the checks.
     if(config->region_dimension==0 && config->A==NAPOT){
-        printf("[PMP configuration: region %d] region dimension must be specified in NAPOT mode\n",config->region_number);
-        return -1;
+       // region dimension must be specified in NAPOT mode
+        return PMP_MISSING;
     }
     if(config->region_end_address==0 && config->A==TOR){
-        printf("[PMP configuration: region %d] start and end address must be specified in TOR mode\n",config->region_number);
-        return -1;
+        // start and end address must be specified in TOR mode
+        return PMP_MISSING;
     }
     if(config->A==NAPOT && (config->region_start_address%config->region_dimension)){
-        printf("[PMP configuration: region %d] NAPOT region must be aligned\n");
-        return -1;
+        // NAPOT region must be aligned 
+        return PMP_NOT_VALID;
     }
     if (reg_num<0 || reg_num>PMP_REGIONS){
-        printf("[PMP configuration: region %d] region number is not valid\n",reg_num);
-        return -1;
+       //region number is not valid\n
+        return PMP_NOT_VALID;
     }
     if(reg_num==0 && config->A==TOR && config->region_start_address!=0){
-        printf("[PMP configuration: region %d] first region always starts from 0 in TOR mode. Start address will be ignored\n", reg_num);
+        //first region always starts from 0 in TOR mode.
+        return PMP_NOT_VALID;
     }
     if((config->A==NA4) && (config->region_dimension!=0 || config->region_dimension!=4)){
-        printf("[PMP configuration: region %d] range is 4 otherwise will be ignored\n",reg_num);
+        //in mode NA4 range is 4
+        return PMP_NOT_VALID;
     }else if (region_dimension < get_granularity()){
-        printf("[PMP configuration: region %d] region dimension (%d bytes) is not valid (less then granularity (%d))\n",reg_num, config->region_dimension, get_granularity());
-        return -1;
+        //region dimension is less then granularity
+        return PMP_NOT_VALID;
     }
 
     //check if rule is locked. if so, can't be modified unless RLB is 1
-    pmp_config_t old_cfg = pmp_read_region(reg_num);
+    //locked if L=1 or if SL=1 and mode is Non Secure
+    pmp_config_t old_cfg;
+    pmp_read_region(reg_num, &old_cfg);
     //read RLB
     uint32_t v;
     __asm__ volatile("csrr %0, mseccfg":"=r"(v));
     v = v & RLB;
-    if(old_cfg.L==1 && v!=RLB){
-        printf("[PMP configuration: region %d] region is locked, can't be modified\n",reg_num);  
-        return -1;
+    if( (old_cfg.L==1 ||(old_cfg.SL==1 && get_security_state() == 0)) && v!=RLB){
+        //region is locked
+        return PMP_LOCKED;
     }
-
+   
     //if MML is not set, RW=01 form a warl field, so the write will fail
     __asm__ volatile("csrr %0, mseccfg":"=r"(v));
     v=v & MML;
     if(config->R==0 && config->W==1 && v!=MML){
-        printf("[PMP configuration: region %d] RW=01 is not vaild if MML is not set.\n",reg_num);  
-        return -1;
+        //RW=01 is not vaild if MML is not set
+        return PMP_NOT_VALID;
     }
 
     uint32_t start_address, end_address;
@@ -758,6 +755,52 @@ int pmp_configure_region(pmp_config_t* config){
     uint32_t word;
     pmp_cfg_to_csr(config,&word);
     pmp_write_cfg(reg_num,word);
-    printf("Region %d correctly configured\n",reg_num);
-    return 0;
+    return PMP_OK;
 }
+
+void pmp_read_region (uint8_t region, pmp_config_t* config){
+    pmp_config_t cfg;
+
+    uint8_t word = read_pmp_csr_value(region);
+    cfg.X=((word & PMP_CFG_X )== PMP_CFG_X)? 1:0;
+    cfg.L=((word & PMP_CFG_L) == PMP_CFG_L)? 1:0;
+    cfg.R=((word & PMP_CFG_R) == PMP_CFG_R)? 1:0;
+    cfg.W=((word & PMP_CFG_W) == PMP_CFG_W)? 1:0;
+    cfg.SL=((word & PMP_CFG_SL) == PMP_CFG_SL)? 1:0;
+    
+    uint32_t address;
+    switch((word & 0x18)){
+        case PMP_CFG_OFF:
+            cfg.A = OFF;
+            cfg.region_start_address=0;
+            cfg.region_end_address=0;
+            break;
+        case PMP_CFG_NA4:
+            cfg.A = NA4;
+            address=read_pmpaddr_csr_value(region);
+            address = address<<2;
+            cfg.region_start_address = address;
+            cfg.region_end_address=address+4;
+            break;
+        case PMP_CFG_NAPOT:
+            cfg.A = NAPOT;
+            cfg.region_start_address=read_pmpaddr_csr_value(region);
+            break;
+        case PMP_CFG_TOR:
+            cfg.A = TOR;
+            uint32_t start_address;
+            start_address = read_pmpaddr_csr_value(region-1);
+            start_address = start_address<<2;
+            address = read_pmpaddr_csr_value(region);
+            address = address<<2;
+            cfg.region_start_address = start_address;
+            cfg.region_end_address=address;
+            break;
+        default:
+            break;
+    }
+    
+    *config = cfg;
+
+}
+

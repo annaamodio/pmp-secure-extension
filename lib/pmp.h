@@ -1,8 +1,20 @@
-#include <stdint.h>
-#include "system_csr.h"
-
+//PMP APIs
 #ifndef PMP_H_
 #define PMP_H_
+
+#include <stdint.h>
+
+/**
+ * Granularity of regions (minimum dimension is 2^(G+2) bytes)
+ */
+#define PMP_GRANULARITY 0
+
+/**
+ * number of regions for this implementation.
+ */
+#define PMP_REGIONS 16
+
+
 /**
  * @enum PMP_MODE_t
  * @brief the 4 different modes for address matching
@@ -14,15 +26,14 @@ typedef enum
     NAPOT = 3
 }PMP_MODE_t;
 
-/**
- * Granularity of regions (minimum dimension is 2^(G+2) bytes)
- */
-#define PMP_GRANULARITY 0
 
 /**
- * number of regions for this implementation.
+ * error codes
  */
-#define PMP_REGIONS 16
+#define PMP_OK       0
+#define PMP_LOCKED 1  /* when you try to modify a locked rule (or SLocked)*/
+#define PMP_MISSING 2 /* missing parameters*/
+#define PMP_NOT_VALID 3 /*invalid parameters*/
 
 /** 
  * @struct pmp_config_t
@@ -76,6 +87,14 @@ typedef struct  {
  **/
 int get_granularity();
 
+/** 
+ * @brief Rule Locking Bypass. to set during boot process or debug
+ * (will not be set if any rules with L=1 are present)
+ * returns PMP_OK if successful, PMP_LOCKED otherwise
+ * @param enable    enable or disable Rule Locking Bypass
+ **/
+int setRLB(unsigned int enable);
+
 /**
  * @brief setting MML bit enables Machine Mode Lockdown
  **/
@@ -86,65 +105,11 @@ void setMML();
  **/
 void setMMWP();
 
-/** 
- * @brief Rule Locking Bypass. to set during boot process or debug
- * (will not be set if any rules with L=1 are present)
- * @param enable    enable or disable Rule Locking Bypass*/
-void setRLB(unsigned int enable);
-
 /**
  *  @brief Used to remove a region. returns 0 if success, -1 otherwise
  * @details sets mode to OFF
  */
 int remove_region(uint8_t region);
-
-/** 
- * @brief rreads pmpcfgx (contains pmpycfg where ceil(y/4)=x)
- * @param region    the number x
-*/
-uint32_t read_pmpcfg(uint8_t number);
-
-/** 
- * @brief reads pmpxcfg from pmpcfgy register; returns 8 bit of configuration
- * @param region    the number of the region to read.
-*/
-uint8_t read_pmp_csr_value(uint8_t region);
-
-/** 
- * @brief writes to pmp configuration register
- * @param region    the number of the region to write.
- * @param value     the value to write.
-*/
-void write_pmp_csr_value(uint8_t region, uint32_t value);
-
-/** 
- * @brief writes to pmp address register
- * @param region    the number of the region to write.
- * @param address     the value to write.
-*/
-void write_pmpaddr_csr_value(uint8_t region, uint32_t address);
-
-/** 
- * @brief reads pmpaddr csr value. returns the read value
- * @param region    the number of the region to read.
-*/
-uint32_t read_pmpaddr_csr_value(uint8_t region);
-
-/**
- * @brief derives control word from configuration struct
- * @param config    config struct
- * @param word      pointer to store the control word
- */
-void pmp_cfg_to_csr(pmp_config_t * config, uint32_t* word);
-
-
-/**
- * @brief writes config value to register
- * @details takes 8 bits of configuration, writes the correct 8 bits in 32-bit register
- * @param region    number of region to write
- * @param word      control word
- */
-void pmp_write_cfg(uint8_t region, uint8_t toWrite);
 
 /**
  * @brief configures the region, may be called during inizialization. returns 0 if success, -1 otherwise
@@ -155,7 +120,8 @@ int pmp_configure_region(pmp_config_t* config);
 /**
  * @brief reads region configuration
  * @param region    number of region
+ * @param config    config struct to save region configuration
  */
-pmp_config_t pmp_read_region (uint8_t region);
+void pmp_read_region (uint8_t region, pmp_config_t* config);
 
 #endif
