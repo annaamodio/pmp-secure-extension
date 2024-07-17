@@ -722,6 +722,9 @@ int pmp_configure_region(pmp_config_t* config){
         return PMP_NOT_VALID;
     }
 
+    //if TOR mode, configuration is not possible if previous region is locked and start address is different
+    
+
     uint32_t start_address, end_address;
     start_address = (config->region_start_address) >> 2;
     //set the address
@@ -730,6 +733,10 @@ int pmp_configure_region(pmp_config_t* config){
             //range from previous region to current
             end_address = (config->region_end_address) >> 2;
             if(reg_num!=0) write_pmpaddr_csr_value(reg_num-1,start_address);
+            if(read_pmpaddr_csr_value(reg_num-1)!=start_address){
+                // if couldn't write it means previous region is locked
+                return PMP_LOCKED;
+            }
             write_pmpaddr_csr_value(reg_num,end_address);
             break;
         case NA4:
