@@ -218,9 +218,8 @@ void simple_exc_handler(void) {
   __asm__ volatile("csrr %0, mstatus":"=r"(v));
   v = v & 0x1800;
   if(v == 0){
-    ptr = Utests; //changes each time?
-  }
-  else{
+    ptr = Utests; 
+  }else{
     ptr = Mtests;
   }
 	__asm__ volatile("csrw mepc, %0"::"r"(ptr));

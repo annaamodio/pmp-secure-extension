@@ -12,6 +12,10 @@
 
 void simple_exc_handler()__attribute__ ((aligned(128)));
 
+extern void nonSecure();
+extern void user();
+
+
 void system_init(void) {
   // Install all exception handlers
   install_exception_handler(UART_IRQ_NUM,&uart_irq_handler);
@@ -196,10 +200,10 @@ void simple_exc_handler(void) {
   switch (cause)
   {
   case 7:
-    puts("\nStore access fault\n\n");
+    puts("\nStore access fault (write blocked)\n\n");
     break;
   case 5:
-   puts("\nLoad access fault\n\n");
+   puts("\nLoad access fault (read blocked)\n\n");
     break;
   case 1:
    puts("\nInstruction access fault\n\n");
@@ -207,9 +211,21 @@ void simple_exc_handler(void) {
   default:
     break;
   }
-  
-  while(1);
+  /**
+   * read mstatus to know which privilege was executing
+   */
+  uint32_t v;
+  void (*ptr);
+  __asm__ volatile("csrr %0, mstatus":"=r"(v));
+  v = v & 0x1800;
+  if(v == 0){
+    ptr = user; 
+  }else{
+    ptr = nonSecure;
+  }
+	__asm__ volatile("csrw mepc, %0"::"r"(ptr));
+	__asm__ volatile("mret");
 
- /* __asm__ volatile("mret"); */
 }
+
 

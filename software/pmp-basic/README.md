@@ -9,7 +9,7 @@ parameter bit SECURE_MONITOR = 0;
 
 I test si trovano nel file `main.c`. Vengono configurate delle regioni e si testa l'accesso in base ai permessi da modalità utente e supervisore.
 
-Per eseguire questi test:
+Per eseguire questi test, lanciare nella root del progetto:
 ```
 make clean
 make build
@@ -17,4 +17,4 @@ make pmp@pmp-basic
 ./csoc_simulation
 ```
 
-I risultati sono riportati in csoc_system.log
+I risultati sono riportati in `csoc_system.log`

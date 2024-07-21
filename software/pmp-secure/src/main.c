@@ -3,43 +3,69 @@
 #include "pmp.h"
 #include "security_mock.h"
 
-//COMMIT ANCHE DI QUESTO
 
 void user(){
 	
-	printf("USER - non secure mode\n\n");
+	static int count =0;
+	int v;
+	if(count ==0) printf("USER - non secure mode\n\n");
 	int * address = 0x120008;
 	int * address2 = 0x125008;
 	
-	printf("Reading from region 1 (U + non secure) should succeed\n\n");
-	int v = *address;
-	/* printf("Writing in region 1 (U + non secure) should fail\n\n");
-	*address= 625;  */
-
-
-	/* printf("Reading from region 2 (U + non secure) should fail\n\n");
-	v = *address2; */
-	/* printf("Writing in region 2 (U + non secure) should fail\n\n");
-	*address2= 625;  */
-
-	SET_SECURE_MODE;
-	/*
-	to check if security mode was actually changed
-	int sec = *(int*)0x40000;
-	printf("SEC: %x\n",sec);*/
-	printf("USER - secure mode\n\n");
-	 printf("Reading from region 1 (U + secure) should succeed\n\n");
-	v = *address; /*
-	printf("Writing in region 1 (U + secure) should fail\n\n");
-	*address= 625;  */
-
-
-	/* printf("Reading from region 2 (U + secure) should fail \n\n");
-	v = *address2; */
-	/* printf("Writing in region 2 (U + secure) should fail\n\n");
-	*address2= 625;  */
-	
-	sim_halt();
+	while(1){
+		switch(count)
+		{
+			case 0:
+				count++;
+				printf("Reading from region 1 (U + non secure) should succeed\n\n");
+				v = *address;
+				break;
+			case 1:
+				count++;
+				printf("Writing in region 1 (U + non secure) should fail\n\n");
+				*address= 625;  
+				break;
+			case 2:
+				count++;
+				printf("Reading from region 2 (U + non secure) should fail\n\n");
+				v = *address2; 
+				break;
+			case 3:
+				count++;
+				printf("Writing in region 2 (U + non secure) should fail\n\n");
+				*address2= 625;  
+				break;
+			case 4:
+				count++;
+				printf("***Switching to secure mode***\n\n");
+				SET_SECURE_MODE;
+				printf("USER - secure mode\n\n");
+				break;
+			case 5:
+				count++;
+ 				printf("Reading from region 1 (U + secure) should succeed\n\n");
+				v = *address; 
+				break;
+			case 6:
+				count++;
+				printf("Writing in region 1 (U + secure) should fail\n\n");
+				*address= 625;  
+				break;
+			case 7:
+				count++;
+				printf("Reading from region 2 (U + secure) should fail \n\n");
+				v = *address2; 
+				break;
+			case 8:
+				count++;
+				printf("Writing in region 2 (U + secure) should fail\n\n");
+				*address2= 625; 
+				break;
+			default:
+				printf("**End of tests**\n\n");
+				sim_halt();
+		}
+	}
 }
 
 void switchToUser(){
@@ -59,39 +85,58 @@ void switchToUser(){
 }
 
 void nonSecure(){
-	printf("In non secure mode (M)\n\n");
+
 	int * address = 0x120008;
 	int * address2 = 0x125008;
-	
-	printf("Reading from region 1 (M + non secure): should succeed\n\n");
-	int v = *address;
-	/* printf("Writing in region 1 (M + non secure): should fail\n\n");
-	*address= 625;  */
-
-
-	printf("Reading from region 2 (M + non secure): should succeed\n\n");
-	v = *address2;
-	printf("Writing in region 2 (M + non secure): should succeed\n\n");
-	*address2= 625; 
-
-	printf("Attempting to modify S-Locked rule (M + non secure): should fail (error)\n\n");
-	pmp_config_t cfg2 = {
-		.region_number = 2,
-		.region_start_address = 0x125000,
-		.region_dimension = 32,
-		.A = NAPOT,
-		.SL = 1,
-		.L = 0,
-		.X = 0,
-		.W = 0,
-		.R = 0,
-	};
-	
-	if(pmp_configure_region(&cfg2)){
-		printf("error\n\n");
+	int v;
+	static int count = 0;
+	if(count == 0) printf("In non secure mode (M)\n\n");
+	while(1){
+	switch(count)
+	{
+		case 0:
+			count++;
+			printf("Reading from region 1 (M + non secure): should succeed\n\n");
+			v = *address;
+			break;
+		case 1:
+			count++;
+ 			printf("Writing in region 1 (M + non secure): should fail\n\n");
+			*address= 625;  
+			break;
+		case 2:
+			count++;
+ 			printf("Reading from region 2 (M + non secure): should succeed\n\n");
+			v = *address2;
+			break;
+		case 3:
+			count++;
+ 			printf("Writing in region 2 (M + non secure): should succeed\n\n");
+			*address2= 625; 
+			break;
+		case 4:
+			count++;
+			printf("Attempting to modify S-Locked rule (M + non secure): should fail (error)\n\n");
+			pmp_config_t cfg2 = {
+				.region_number = 2,
+				.region_start_address = 0x125000,
+				.region_dimension = 32,
+				.A = NAPOT,
+				.SL = 1,
+				.L = 0,
+				.X = 0,
+				.W = 0,
+				.R = 0,
+			};
+			
+			if(pmp_configure_region(&cfg2)){
+				printf("ERROR!\n\n\n");
+			}
+			break;
+		default:
+			switchToUser();
+		}
 	}
-
-	switchToUser();
 }
 
 
@@ -177,7 +222,7 @@ int main(){
 	printf("Writing in region 2 (M + secure): should succeed\n\n");
 	*address2= 625; 
 
-	SMRET_mock();
+	SMRET_mock(); //jumps to function: nonSecure
 
 	sim_halt();
 
