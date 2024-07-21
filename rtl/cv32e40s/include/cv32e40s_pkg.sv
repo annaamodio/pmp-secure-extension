@@ -837,7 +837,7 @@ parameter SECURE = 1;
 parameter bit USER = SECURE;
 
 //Security extension
-parameter bit SECURE_MONITOR = 1;
+parameter bit SECURE_MONITOR = 1; // change
 
 // Lowest supported privilege level
 parameter privlvl_t PRIV_LVL_LOWEST = (USER) ? PRIV_LVL_U : PRIV_LVL_M;

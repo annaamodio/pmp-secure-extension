@@ -51,7 +51,8 @@ MKDIR     = @mkdir -p $(@D) 		# Creates folders if not present
 all: copy_vmem
 
 copy_vmem: bin/ram.vmem
-	cp bin/ram.vmem ../../vmem
+	$(MKDIR) ../../vmem
+	cp bin/ram.vmem ../../vmem/ram.vmem
 
 bin/ram.vmem: bin/$(PROJECT).bin
 	@echo "[VMEM]	Creating vmem file"
