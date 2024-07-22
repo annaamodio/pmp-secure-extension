@@ -24,9 +24,11 @@ E successivamente avviare l'esecuzione con
 ```
 ./csoc_simulation
 ```
-I risultati sono osservabili nel log di sistema (csoc_system.log).
+I risultati sono osservabili nel log di sistema (csoc_system.log). I file pmp-basic.log, pmp-smepmp.log, pmp-secure.log contengono i risultati di run di test precedenti.
 
 I test sono meglio documentati in software/pmp-basic, software/pmp-smepmp, software/pmp-secure.
+
+
 
 # Estensione
 L'estensione secure è implementata modificando i file (rtl/):
