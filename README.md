@@ -1,5 +1,8 @@
 # PMP security extension
 
+Test ed estensione della PMP per il core RISC-V cv32e40s.
+Progetto di Embedded Systems AA:2023/2024 
+
 ## Repository
 - **lib** contiene la libreria per la pmp (pmp.h, pmp.c)
 - **rtl** contiene la descrizione del SoC in system verilog
