@@ -1,0 +1,78 @@
+Region 2 correctly configured
+Region 1 correctly configured
+MML set
+Region 1 correctly configured
+Region 0 correctly configured
+Region 3 correctly configured
+Region 4 correctly configured
+Region 5 correctly configured
+Region 6 correctly configured
+Region 8 correctly configured
+Region 9 correctly configured
+
+****Starting tests********
+[0] M mode: write to M region (should succeed)
+[1] M mode: read from M region (should succeed)
+[2] M mode: write to U region (should fail)
+EXCEPTION!!!
+============
+MEPC:   0x00102714
+MCAUSE: 0x00000007
+MTVAL:  0x00000000
+Store access fault (write blocked)
+
+[3] M mode: read from U region (should fail)
+EXCEPTION!!!
+============
+MEPC:   0x0010274A
+MCAUSE: 0x00000005
+MTVAL:  0x00000000
+Load access fault (read blocked)
+
+[4] M mode: calling shared function (should succeed)
+This function can be called by M and U
+[5] M mode: calling M function (should succeed)
+This function can only be called by M
+[6] M mode: calling U function (should fail)
+EXCEPTION!!!
+============
+MEPC:   0x00103740
+MCAUSE: 0x00000001
+MTVAL:  0x00000000
+Instruction access fault
+
+Switching to user mode
+*********************
+
+Now in user function
+[0] U mode: write to U region (should succeed)
+[1] U mode: read from U region (should succeed)
+[2] U mode: write to M region (should fail)
+EXCEPTION!!!
+============
+MEPC:   0x00103846
+MCAUSE: 0x00000007
+MTVAL:  0x00000000
+Store access fault (write blocked)
+
+[3] U mode: read from M region (should fail)
+EXCEPTION!!!
+============
+MEPC:   0x0010387C
+MCAUSE: 0x00000005
+MTVAL:  0x00000000
+Load access fault (read blocked)
+
+[4] U mode: calling shared function (should succeed)
+This function can be called by M and U
+[5] U mode: calling M function (should fail)
+EXCEPTION!!!
+============
+MEPC:   0x00102600
+MCAUSE: 0x00000001
+MTVAL:  0x00000000
+Instruction access fault
+
+[6] U mode: calling U function (should succeed)
+This function can only be called by U
+****End of tests****

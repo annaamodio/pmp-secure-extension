@@ -1,0 +1,40 @@
+Region 0 correctly configured
+Region 1 correctly configured
+Region 2 correctly configured
+Region 3 correctly configured
+
+M mode: trying to write in read only location (should fail)
+
+EXCEPTION!!!
+============
+MEPC:   0x00100394
+MCAUSE: 0x00000007
+MTVAL:  0x00000000
+Store access fault
+
+M mode: trying to write in location that is read only for U (should succeed)
+M mode: trying to read from location that is read only for U (should succeed)
+M mode: trying to access illegal region (should fail - whitelist)
+
+EXCEPTION!!!
+============
+MEPC:   0x001003E2
+MCAUSE: 0x00000005
+MTVAL:  0x00000000
+Load access fault
+
+Switching to user mode
+*********************
+
+Now in user function
+U mode: trying to read in read only location for U (should succed)
+U mode: trying to write in read only location for U (should fail)
+
+EXCEPTION!!!
+============
+MEPC:   0x00100154
+MCAUSE: 0x00000007
+MTVAL:  0x00000000
+Store access fault
+
+***End of tests*****
