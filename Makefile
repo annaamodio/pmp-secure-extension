@@ -98,7 +98,7 @@ build:
 clean:
 	@rm -rf libcsoc/verilated_soc
 	@rm -f *_simulation
-	@rm -f *.log
+	@rm -f csoc_system.log
 	@rm -f vmem/*
 	@rm -f waves/*
 	@make -C libcsoc clean

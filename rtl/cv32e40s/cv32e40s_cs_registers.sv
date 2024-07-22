@@ -2390,8 +2390,8 @@ module cv32e40s_cs_registers import cv32e40s_pkg::*;
                                               ({pmpncfg_n_int[i].lock, pmpncfg_n_int[i].read, pmpncfg_n_int[i].write, pmpncfg_n_int[i].exec} == 4'b1101));  // Locked region, M-mode: read/execute, S/U mode: none
 
           // MSECCFG.RLB allows the lock bit to be bypassed
-          // modified; also locked if slock=1 and security level is non secure: CAPIRE QUI DA DOVE ARRIVA IL SECURITY LEVEL (&& level = non secure)
-          assign pmpncfg_locked[i] = ((pmpncfg_rdata[i].slock & security_lvl_rdata ==SEC_LVL_NS) | pmpncfg_rdata[i].lock) && !pmp_mseccfg_rdata.rlb;// && security_lvl_q == SEC_LVL_NS);
+          // modified; also locked if slock=1 and security level is non secure
+          assign pmpncfg_locked[i] = ((pmpncfg_rdata[i].slock & security_lvl_rdata ==SEC_LVL_NS) | pmpncfg_rdata[i].lock) && !pmp_mseccfg_rdata.rlb;
 
           // Extract PMPCFGi bits from wdata
           always_comb begin
