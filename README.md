@@ -7,7 +7,7 @@ Progetto di Embedded Systems AA:2023/2024
 ## Repository
 - **lib** contiene la libreria per la pmp (pmp.h, pmp.c)
 - **rtl** contiene la descrizione del SoC in system verilog
-- **simulation**, **software** e **libcsoc** sono necessarie per i test (da https://github.com/rdgarce/certify_le_soc)
+- **simulation**, **software** e **libcsoc** sono necessarie per i test
 
 ## Tests
 Per eseguire i test:
